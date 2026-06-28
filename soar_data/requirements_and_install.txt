@@ -34,6 +34,11 @@ AUTOCODE:
 - Enable with: autocode on
 - Default: OFF
 
+PERSONALITY
+- GO TO https://console.groq.com/keys and get a api key and paste it in where it says in the script API_KEY_HERE (you can do control + f/command + f to quickly search for it). Then it should work.
+- He will now remember past chats and commands will still work as usual.
+- Groq key only works online
+- Otherwise there is a personality system added.
 
 VOICE:
 - Voice system is available
