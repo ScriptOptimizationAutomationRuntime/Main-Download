@@ -1,18 +1,9 @@
-SOAR (Script Optimization and Automation Runtime) is a Python-based automation 
-runtime that provides a centralized environment for organizing, managing, and 
-executing automation projects.
-
-Rather than treating automation as a collection of unrelated scripts, SOAR 
-introduces a structured runtime with project management, command execution, 
-logging, and workflow utilities while remaining lightweight and easy to extend.
-
-SOAR is currently under active development and should be considered experimental.
-
-SOAR was created to simplify the development and management of Python automation
-projects by providing a unified runtime environment.
-
-The project focuses on maintaining a balance between simplicity and flexibility. 
-Unlike enterprise workflow systems, SOAR is intended for developers who want a 
-lightweight automation platform without the overhead of configuring large frameworks.
-
-Official Wiki: https://www.soardownload.com/wiki
+Q:What is this?
+A:SOAR is a program that will help you with coding workflow and give you data about your system.
+Q:Why does it exist?
+A:To help people with coding workflow and with making projects of sorts.
+Q:How do I install it?
+A:You can install it in the repo latest-version or on www.soardownload.com/downloads
+Q:How do I use it?
+A:You can run it in Terminal/Command prompt etc or in VSC, there is tutorials on youtube (@soardownload) or in the wiki in the soar-core resp. 
+(Also https://www.soardownload.com/wiki )
