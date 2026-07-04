@@ -15,3 +15,4 @@ The project focuses on maintaining a balance between simplicity and flexibility.
 Unlike enterprise workflow systems, SOAR is intended for developers who want a 
 lightweight automation platform without the overhead of configuring large frameworks.
 
+Official Wiki: https://www.soardownload.com/wiki
