@@ -16,7 +16,7 @@ soar_main.py (recommended you run it with Visual Studio Code)
 SUPPORTED SYSTEMS:
 Mac: Works  
 Windows: Works 
-Linux: Not supported  
+Linux: Works (Not Tested)
 
 
 NOTES:
