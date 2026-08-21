@@ -2,7 +2,7 @@
 # SOAR MAIN SYSTEM
 # SOAR - Script Optimization and Automation Runtime
 # Made by Philip Kluz
-# Version 1.00.7 Early Beta
+# Version 1.00.8 Early Beta
 # DO NOT EDIT CORE PARTS.
 # =====================================================
 
@@ -81,6 +81,7 @@ NOTES_FILE = DATA_DIR / "notes.txt"
 MEMORY_FILE = DATA_DIR / "memories.txt"
 TODO_FILE = DATA_DIR / "todos.txt"
 CHAT_LOG = DATA_DIR / "chat_log.txt"
+MODS_DIR = BASE_DIR / "soar-mods"
 
 for p in [DATA_DIR, PROJECTS_DIR, NOTES_FILE, MEMORY_FILE, TODO_FILE, CHAT_LOG, SETTINGS_FILE]:
     if p == DATA_DIR or p == PROJECTS_DIR:
@@ -759,6 +760,48 @@ def choose_best_tts_voice(engine=None, preferred_name=None):
 
     return None
 
+if not MODS_DIR.exists(): #mods start 1
+    MODS_DIR.mkdir(parents=True, exist_ok=True)
+    print(f"[*] Created empty mods directory at: {MODS_DIR}")
+
+def load_soar_mods():
+    import importlib.util
+    import sys
+    from pathlib import Path
+    
+    MODS_DIR = BASE_DIR / "soar-mods"
+    if not MODS_DIR.exists():
+        MODS_DIR.mkdir(parents=True, exist_ok=True)
+        
+    if not hasattr(sys, "mod_commands"):
+        sys.mod_commands = {}
+
+    print("[SOAR MODS] Scanning 'soar-mods/' folder for active addons...")
+    
+    for mod_path in MODS_DIR.iterdir():
+        if mod_path.is_dir():
+            init_file = mod_path / "__init__.py"
+            if init_file.exists():
+                mod_name = mod_path.name
+                try:
+                    spec = importlib.util.spec_from_file_location(mod_name, str(init_file))
+                    if spec and spec.loader:
+                        module = importlib.util.module_from_spec(spec)
+                        sys.modules[mod_name] = module
+                        spec.loader.exec_module(module)
+                        print(f"Mod Loaded: {mod_name}")
+                        
+                        if hasattr(module, "MOD_COMMANDS") and isinstance(module.MOD_COMMANDS, dict):
+                            sys.mod_commands.update(module.MOD_COMMANDS)
+                            
+                        if hasattr(module, "initialize_addon"):
+                            module.initialize_addon()
+                except Exception as e:
+                    print(f"Error loading mod {mod_name}: {e}")
+
+    print("Mods above.")
+
+load_soar_mods() #mods end 1
 
 def show_voice_status():
     pref = get_voice_preference()
@@ -2720,10 +2763,11 @@ def reply_to(user_text):
                             "You are SOAR (Script Optimization and Automation Runtime), an advanced, intelligent local desktop AI assistant "
                             "created by Philip Kluz. You are running on a Mac/Windows. You are a custom automated runtime helper built with pure Python.\n\n"
                             "Your current system specifications and architectural capabilities include:\n"
-                            "- Version: 1.00.7 Early Beta.\n"
+                            "- Version: 1.00.8 Early Beta.\n"
                             "- AVSS (Anti Virus SOAR Software): A localized, active protection shield running on a daemon thread monitoring background processes and providing security hardening.\n"
                             "- ACHDS (Advanced Code Helper Diagnostic System): Files outside of soar if upon users request can be fixed.\n"
                             "- CSRS (Connection Server Request System): Can try to widen signal of wifi or network, can also give diagnostics on the wifi.\n"
+                            "- SPA (SOAR Project Assistant): Can create bases using prompts.\n"
                             "- File & Workspace Access: You directly manage folders and track local assets under the root directory 'soar_data' containing local tracking structures (notes.txt, memories.txt, todos.txt, chat_log.txt), and the user's primary project space at '~/SOAR/Projects'.\n"
                         )
                     }
@@ -3465,13 +3509,39 @@ def emergency_shutdown():
     except Exception:
         sys.exit(0)
 
-def process_command(raw):
-    parts = shlex.split(raw.strip())
+def process_command(raw, from_voice=False): #mods start 2
+    if shutting_down or stop_event.is_set():
+        return
+
+    if not isinstance(raw, str):
+        raw = str(raw) if raw is not None else ""
+
+    text = raw.strip()
+    if not text:
+        return
+
+    if text.startswith("/"):
+        text = text[1:]
+    
+    lower = text.lower()
+
+    import sys
+    if hasattr(sys, "mod_commands"):
+        for command_keyword in sys.mod_commands:
+            if command_keyword in lower:
+                sys.mod_commands[command_keyword]()
+                return
+
+    try:
+        parts = shlex.split(text)
+    except Exception:
+        parts = text.split()
+        
     if not parts:
         return
         
     cmd = parts[0].lower()
-    
+
     if cmd == "build":
         prompt_str = " ".join(parts[1:])
         if not prompt_str:
@@ -3483,14 +3553,7 @@ def process_command(raw):
         
         agent = ProjectAgent(prompt=prompt_str, project_name="Autonomously_Generated_App")
         agent.execute_pipeline()
-        return
-
-    text = raw.strip()
-    if not text:
-        return
-    if text.startswith("/"):
-        text = text[1:]
-    lower = text.lower()
+        return #mods end 2
 
     shutdown_words = {
         "exit", "quit", "bye", "shut down", "shutdown", "power off", "power down", "poweroff", "turn off"
@@ -3657,13 +3720,13 @@ def process_command(raw):
             return
         
 # ======================================================
-# ACHDS (Advanced Code Helper Diagnostic System) V 1.0 
+# ACHDS (Advanced Code Helper Diagnostic System) V 1.1 
 # SOAR Help Module #001
 # Made by Philip Kluz 2026 Jun 24 Late
 # "atch-dee-ess"
 #======================================================
 
-    if lower.startswith("help me with this code") or lower.startswith("code help"):
+    if lower.startswith("help me with this code") or lower.startswith("code help") or lower.startswith("achds"):
         try:
             import re
             import shutil
@@ -3672,7 +3735,15 @@ def process_command(raw):
             from pathlib import Path
             import sys
 
-            cmd_len = 22 if lower.startswith("help me with this code") else 9
+            if lower.startswith("help me with this code"):
+                cmd_len = 22
+            elif lower.startswith("code help"):
+                cmd_len = 9
+            elif lower.startswith("achds"):
+                cmd_len = 5
+            else:
+                cmd_len = 0
+
             raw_input = text[cmd_len:].strip()
 
             if not raw_input:
@@ -3690,19 +3761,21 @@ def process_command(raw):
                         raw_input = parts[0].strip()
 
             target_path = raw_input.strip('"').strip("'")
-            try:
-                file_path = Path(target_path) if os.path.isabs(target_path) else BASE_DIR / target_path
-            except NameError:
-                file_path = Path(target_path)
+            file_path = Path(target_path)
 
-            if not file_path.exists():
-                try:
-                    file_path = DATA_DIR / target_path
-                except NameError:
-                    pass
+            if not file_path.is_absolute():
+                base_dir = globals().get('BASE_DIR', Path.cwd())
+                data_dir = globals().get('DATA_DIR', Path.cwd())
+                
+                if (base_dir / target_path).exists():
+                    file_path = base_dir / target_path
+                elif (data_dir / target_path).exists():
+                    file_path = data_dir / target_path
+                else:
+                    file_path = base_dir / target_path 
 
             if not file_path.exists() or not file_path.is_file():
-                print(f"Error: Target code asset '{target_path}' could not be resolved or found.")
+                print(f"Error: Target code asset '{target_path}' could not be resolved or found at {file_path}.")
                 return
 
             with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
@@ -3816,7 +3889,29 @@ def process_command(raw):
                     print("[SOAR AST ENGINE] Commencing Abstract Syntax Tree refactoring...")
 
                     try:
-                        tree = ast.parse(code_text, filename=file_path.name)
+                        code_lines = code_text.split('\n')
+                        tree = None
+                        max_retries = 50 
+
+                        for attempt in range(max_retries):
+                            try:
+                                tree = ast.parse("\n".join(code_lines), filename=file_path.name)
+                                break
+                            except SyntaxError as e:
+                                if e.lineno is not None:
+                                    print(f"  [FORCE MODE] Bypassing SyntaxError on line {e.lineno}: {e.msg}")
+                                    idx = e.lineno - 1
+                                    if 0 <= idx < len(code_lines):
+                                        code_lines[idx] = f"# [ACHDS FORCE-BYPASSED] {code_lines[idx]}"
+                                    else:
+                                        print("  [AST BREAKDOWN] SyntaxError points to out-of-bounds line. Aborting parse.")
+                                        break
+                                else:
+                                    print("  [AST BREAKDOWN] Unresolvable syntax layout. Aborting parse.")
+                                    break
+                        
+                        if not tree:
+                            raise Exception("Could not resolve enough syntax errors to build a tree.")
 
                         class SOARCodeTransformer(ast.NodeTransformer):
                             def __init__(self):
@@ -4925,6 +5020,10 @@ def watch_intro_and_focus():
 
 
 def main():
+
+    if soar_avss and hasattr(soar_avss, "enforce_single_instance"):
+        soar_avss.enforce_single_instance()
+
     global shutting_down, stop_event
     shutting_down = False
     stop_event = threading.Event()
@@ -4988,7 +5087,7 @@ def main():
     print("Voice starts automatically if your mic libraries are ready.\n")
 
     try:
-        speak("SOAR Booted, version 1.00.7. Voice is on.", allow_sound=True)
+        speak("SOAR Booted, version 1.00.8. Voice is on.", allow_sound=True)
     except Exception:
         pass
 
